@@ -1,0 +1,29 @@
+:root {
+    --main-canvas-width: 100%;
+    --main-canvas-height: 100vh;
+    --main-canvas-bg: #f2f2e6;
+}
+
+#userCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#canvasContainer {
+    display: none;
+    width: var(--main-canvas-width);
+    height: var(--main-canvas-height);
+    background-color: var(--main-canvas-bg);
+}
+
+#sectionCreatorForm {
+    display: none;
+    position: fixed;
+}
+
+#loginForm {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+}
