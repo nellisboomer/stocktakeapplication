@@ -1,6 +1,6 @@
 :root {
     --main-canvas-width: 100%;
-    --main-canvas-height: 100vh;
+    --main-canvas-height: 50vh;
     --main-canvas-bg: #f2f2e6;
 }
 
@@ -17,12 +17,27 @@
     background-color: var(--main-canvas-bg);
 }
 
-#sectionCreatorForm {
+#sectionCreationForm {
     display: none;
     position: fixed;
 }
 
+#sectionInfoContainer {
+    display: none;
+    position: fixed;
+}
+
+#sectionInfo {
+    display: none;
+}
+
+#barcodeData {
+    display: none;
+}
+
 #loginForm {
+    width: var(--main-canvas-width);
+    height: var(--main-canvas-height);
     display: flex;
     flex-direction: column;
     position: fixed;
