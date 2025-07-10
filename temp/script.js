@@ -5,6 +5,7 @@ window.onload = function() {
   let zoomLevel = 0;
 
   let drawingMode = true;
+  let selectedShape = null;
   let shapes = [];
   currentShape = createNewShape()
 
@@ -67,7 +68,7 @@ window.onload = function() {
     canvas.addEventListener('contextmenu', function(e) {
       e.preventDefault();
 
-      if (drawingMode) return;
+      if (currentShape.markers.length > 0 && !currentShape.isClosed) return;
 
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -79,10 +80,11 @@ window.onload = function() {
 
       if (clickedShape) {
         document.getElementById('sectionInfoContainer').style.display = 'flex';
-        
-        console.log('You right clicked shape:', clickedShape);
+        console.log('You right clicked shape:', clickedShape); //console
         highlightShape(clickedShape);
       } else {
+        selectedShape = null;
+        document.getElementById('sectionInfoContainer').style.display = 'none';
         console.log('No shape found under your click');
       }
     });
@@ -206,8 +208,10 @@ window.onload = function() {
     author.value = '';
 
     form.style.display = 'none';
+    selectedShape = null;
     currentShape = createNewShape();
     drawingMode = true;
+    drawGrid(zoomLevel);
   }
 
   function drawMarker(x, y) {
@@ -218,6 +222,10 @@ window.onload = function() {
   }
 
   function highlightShape(shape) {
+    drawGrid(zoomLevel);
+    selectedShape = shape;
+    showSectionInfoPanel(shape);
+
     ctx.strokeStyle = 'orange';
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -241,5 +249,30 @@ window.onload = function() {
       if (intersect) inside = !inside;
     }
     return inside;
+  }
+
+  function showSectionInfoPanel(shape) {
+    const panel = document.getElementById('sectionInfoContainer').style.display = 'flex';
+   
+    document.getElementById('infoID').placeholder = shape.id;
+    document.getElementById('infoLocation').placeholder = shape.location;
+    document.getElementById('infoName').placeholder = shape.section;
+    document.getElementById('infoAuthor').placeholder = shape.author;
+
+    document.getElementById('infoCloseBtn').addEventListener('click', function () {
+      drawGrid(zoomLevel);
+      panel.style.display = 'none';
+      selectedShape = null
+    })
+
+    document.getElementById('infoSaveBtn').addEventListener('click', function () {
+      shape.author = document.getElementById('infoAuthor').placeholder;
+      shape.location = document.getElementById('infoLocation').placeholder;
+      shape.section = document.getElementById('infoName').placeholder;
+      drawGrid(zoomLevel)
+      panel.style.display = 'none';
+      selectedShape = null;
+    })
+    
   }
 }

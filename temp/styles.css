@@ -1,3 +1,7 @@
+body {
+    padding: 50px
+}
+
 :root {
     --main-canvas-width: 100%;
     --main-canvas-height: 50vh;
@@ -25,10 +29,8 @@
 #sectionInfoContainer {
     display: none;
     position: fixed;
-}
-
-#sectionInfo {
-    display: none;
+    width: 500px;
+    height: 300px;
 }
 
 #barcodeData {
