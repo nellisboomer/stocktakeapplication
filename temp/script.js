@@ -4,6 +4,7 @@ window.onload = function() {
   let gridSize = [50, 25, 12.5];
   let zoomLevel = 0;
 
+  let formInProgress = true;
   let drawingMode = true;
   let selectedShape = null;
   let shapes = [];
@@ -66,7 +67,13 @@ window.onload = function() {
     });
 
     canvas.addEventListener('contextmenu', function(e) {
-      e.preventDefault();
+      e.preventDefault(); 
+      console.log('form in progress:', formInProgress)
+
+      if (formInProgress) {
+        console.log('Right click is blocked until form is submitted');
+        return;
+      }
 
       if (currentShape.markers.length > 0 && !currentShape.isClosed) return;
 
@@ -185,6 +192,7 @@ window.onload = function() {
     const form = document.getElementById('sectionCreationForm');
     form.style.display = 'flex';
     form.currentShape = shape;
+    formInProgress = true;
   }
 
   document.getElementById('sectionFormBtn').addEventListener('click', saveSectionInfo);
@@ -211,6 +219,7 @@ window.onload = function() {
     selectedShape = null;
     currentShape = createNewShape();
     drawingMode = true;
+    formInProgress = false;
     drawGrid(zoomLevel);
   }
 
@@ -252,12 +261,18 @@ window.onload = function() {
   }
 
   function showSectionInfoPanel(shape) {
-    const panel = document.getElementById('sectionInfoContainer').style.display = 'flex';
+    const panel = document.getElementById('sectionInfoContainer');
+    panel.style.display = 'flex';
    
     document.getElementById('infoID').placeholder = shape.id;
-    document.getElementById('infoLocation').placeholder = shape.location;
-    document.getElementById('infoName').placeholder = shape.section;
-    document.getElementById('infoAuthor').placeholder = shape.author;
+
+    const locationInput = document.getElementById('infoLocation');
+    const sectionInput = document.getElementById('infoName');
+    const authorInput = document.getElementById('infoAuthor');
+    const infoIdCode = document.getElementById('infoID').innerHTML = shape.id;
+    locationInput.placeholder = shape.location;
+    sectionInput.placeholder = shape.section;
+    authorInput.placeholder = shape.author;
 
     document.getElementById('infoCloseBtn').addEventListener('click', function () {
       drawGrid(zoomLevel);
@@ -266,13 +281,27 @@ window.onload = function() {
     })
 
     document.getElementById('infoSaveBtn').addEventListener('click', function () {
-      shape.author = document.getElementById('infoAuthor').placeholder;
-      shape.location = document.getElementById('infoLocation').placeholder;
-      shape.section = document.getElementById('infoName').placeholder;
+      
+      if (authorInput.value.trim() !== '') {
+        selectedShape.author = authorInput.value.trim();
+      };
+
+      if (locationInput.value.trim() !== '') {
+        selectedShape.location = locationInput.value.trim();
+      };
+
+      if (sectionInput.value.trim() !== '') {
+        selectedShape.section = sectionInput.value.trim();
+      };
+      console.log('Shape updated:', selectedShape);
+      
+      authorInput.value = '';
+      locationInput.value = '';
+      sectionInput.value = '';
+      
       drawGrid(zoomLevel)
       panel.style.display = 'none';
       selectedShape = null;
-    })
-    
+    });
   }
 }
