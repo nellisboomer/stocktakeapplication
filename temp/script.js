@@ -4,13 +4,20 @@ window.onload = function() {
   let gridSize = [50, 25, 12.5];
   let zoomLevel = 0;
 
+  const MODES = {
+    IDLE: 'idle',
+    DRAWING: 'drawing',
+    EDITING: 'editing',
+    VIEWING: 'viewing'
+  };
+
+  let currentMode = MODES.IDLE;
   let draggingMarkerIndex = null;
-  let editingMode = false;
-  let editingShape = null;
 
   let formInProgress = true;
-  let drawingMode = true;
-  
+  currentMode = MODES.DRAWING;
+
+  let editingShape = null;
   let selectedShape = null;
   
   let shapes = [];
@@ -26,10 +33,6 @@ window.onload = function() {
       isClosed: false,
       isVerified: false, 
     }
-  }
-
-  function getShapeById(id) {
-    return shapes.find(shape => shape.id === id);
   }
 
   document.getElementById('loginForm').style.display = 'flex';
@@ -76,34 +79,53 @@ window.onload = function() {
       e.preventDefault(); 
       console.log('form in progress:', formInProgress)
 
+      // blocks the right click until the form is completed
       if (formInProgress) {
         console.log('Right click is blocked until form is submitted');
         return;
       }
+      
+      // prevents interaction if shape is being edited
+      if (currentMode === MODES.EDITING) {
+        console.log('Right click is blocked whilst editing');
+        return;
+      }
 
-      if (currentShape.markers.length > 0 && !currentShape.isClosed) return;
+      // prevents right click if shape is being drawn
+      if (currentMode === MODES.DRAWING && !currentShape.isClosed) {
+        console.log('Right click is bloked whilst drawing in progress')
+        return;
+      }
 
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const { x, y } = getSnappedMousePosition(e);
 
-      const clickedShape = shapes.find(shape =>
-        shape.isClosed && pointInPolygon({ x, y }, shape.markers)
-      );
+      const clickedShape = shapes.find(shape => {
+        if (!shape.isClosed) return false;
+        if (pointInPolygon({ x, y }, shape.markers)) return true;
+        if (isNearMarker({ x, y }, shape.markers, 10)) return true;
+        return false;
+      });
 
       if (clickedShape) {
+        selectedShape = clickedShape;
+        currentMode = MODES.VIEWING;
+
         document.getElementById('sectionInfoContainer').style.display = 'flex';
         console.log('You right clicked shape:', clickedShape); //console
+
         highlightShape(clickedShape);
       } else {
         selectedShape = null;
+        currentMode = MODES.IDLE;
+
         document.getElementById('sectionInfoContainer').style.display = 'none';
         console.log('No shape found under your click');
       }
+      drawGrid(zoomLevel);
     });
 
     canvas.addEventListener('mousedown', function(e) {
-      if (!editingMode || !editingShape) return;
+      if (currentMode !== MODES.EDITING || !editingShape) return;
 
       const rect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
@@ -122,7 +144,7 @@ window.onload = function() {
     });
 
     canvas.addEventListener('mousemove', function(e) {
-      if (!editingMode || draggingMarkerIndex === null) return;
+      if (currentMode !== MODES.EDITING || draggingMarkerIndex === null) return;
 
       const rect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
@@ -137,7 +159,7 @@ window.onload = function() {
     });
 
     canvas.addEventListener('mouseup', function() {
-      if (editingMode) {
+      if (currentMode === MODES.EDITING) {
         draggingMarkerIndex = null;
       }
     });
@@ -146,9 +168,9 @@ window.onload = function() {
 
     const infoPanel = document.getElementById('sectionInfoContainer');
     if (infoPanel.style.display === 'flex') return;
-
-    if (!drawingMode) return;
-    if (currentShape.isClosed) return;
+    
+    if (currentMode !== MODES.DRAWING) return;
+    if (!currentShape || currentShape.isClosed) return;
 
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
@@ -172,7 +194,7 @@ window.onload = function() {
         shapes.push(currentShape);
         showSectionForm(currentShape);
         drawGrid(zoomLevel);
-        drawingMode = false;
+        currentMode = MODES.IDLE;
         return;
       }
     }
@@ -207,13 +229,39 @@ window.onload = function() {
     drawAllShapes();
   }
 
-  function drawAllShapes() {
-    const allShapes = [...shapes, currentShape];
-    for (const shape of allShapes) {
-      if(shape.markers.length === 0) continue;
+  function getSnappedMousePosition(e) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const spacing = gridSize[zoomLevel];
 
-      ctx.strokeStyle = (shape === selectedShape && editingMode) ? 'orange' : 'blue';
-      ctx.lineWidth = (shape === selectedShape && editingMode) ? 3 : 2;
+    return {
+      x: Math.round(mouseX / spacing) * spacing,
+      y: Math.round(mouseY / spacing) * spacing
+    };
+  }
+
+  function drawAllShapes() {
+    const allShapes = [...shapes];
+    if (currentShape) allShapes.push(currentShape); // only once
+
+    for (const shape of allShapes) {
+      if (!shape || !shape.markers || shape.markers.length === 0) continue;
+
+      const isEditing = currentMode === MODES.EDITING && shape === selectedShape;
+      const isHighlighted = currentMode === MODES.VIEWING && shape === selectedShape;
+
+      if (isEditing) {
+        ctx.strokeStyle = 'orange';
+        ctx.lineWidth = 3;
+      } else if (isHighlighted) {
+        ctx.strokeStyle = 'orange';
+        ctx.lineWidth = 4;
+      } else {
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 2;
+      }
+
       ctx.beginPath();
       ctx.moveTo(shape.markers[0].x, shape.markers[0].y);
 
@@ -223,19 +271,19 @@ window.onload = function() {
 
       if (shape.isClosed) {
         ctx.closePath();
-        ctx.fillStyle = 'blue';
-        ctx.fill()
+        ctx.fillStyle = isEditing ? 'rgba(255,165,0,0.2)' : 'blue';
+        ctx.fill();
       }
 
       ctx.stroke();
-      
-      if (!shape.isClosed) {
+
+      if (!shape.isClosed || isEditing) {
         for (const marker of shape.markers) {
           drawMarker(marker.x, marker.y);
         }
       }
+    }
   }
-}
 
   function showSectionForm(shape) {
     const form = document.getElementById('sectionCreationForm');
@@ -272,7 +320,7 @@ window.onload = function() {
     form.style.display = 'none';
     selectedShape = null;
     currentShape = createNewShape();
-    drawingMode = true;
+    currentMode = MODES.IDLE;
     formInProgress = false;
     drawGrid(zoomLevel);
   }
@@ -280,24 +328,22 @@ window.onload = function() {
   function drawMarker(x, y) {
     ctx.fillStyle = "red";
     ctx.beginPath();
-    ctx.arc(x, y, 2, 0, Math.PI * 2);
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
     ctx.fill();
   }
 
   function highlightShape(shape) {
-    drawGrid(zoomLevel);
+    if (!shape || !shape.markers || shape.markers.length === 0) {
+      console.warn('Invalid shape provided to highlightShape');
+      return;
+    }
+
     selectedShape = shape;
+
+    currentMode = MODES.VIEWING
     showSectionInfoPanel(shape);
 
-    ctx.strokeStyle = 'orange';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(shape.markers[0].x, shape.markers[0].y);
-    for (let i = 1; i < shape.markers.length; i++) {
-      ctx.lineTo(shape.markers[i].x, shape.markers[i].y);
-    }
-    if (shape.isClosed) ctx.closePath();
-      ctx.stroke();
+    drawGrid(zoomLevel);
     }
   
   function pointInPolygon(point, polygon) {
@@ -312,6 +358,18 @@ window.onload = function() {
       if (intersect) inside = !inside;
     }
     return inside;
+  }
+
+  function isNearMarker(point, markers, threshold = 10) {
+    for (const marker of markers) {
+      const dx = point.x - marker.x;
+      const dy = point.y - marker.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= threshold) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function showSectionInfoPanel(shape) {
@@ -364,9 +422,16 @@ window.onload = function() {
     selectedShape = null
   })
 
-  document.getElementById('toggleEditMode').addEventListener('click', function() {
+  document.getElementById('toggleEditMode').addEventListener('click', () => {
     console.log('editing button clicked');
-    editingMode = !editingMode;
-    editingShape = selectedShape;
-  })
+    if (currentMode === MODES.EDITING) {
+      currentMode = MODES.IDLE;
+      editingShape = null
+    } else {
+      currentMode = MODES.EDITING;
+      selectedShape = null;
+      currentShape = null;
+    }
+    drawGrid(zoomLevel)
+  });
 }
