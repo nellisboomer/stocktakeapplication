@@ -1,0 +1,60 @@
+body {
+    padding: 50px
+}
+
+:root {
+    --main-canvas-width: 100%;
+    --main-canvas-height: 50vh;
+    --main-canvas-bg: #f2f2e6;
+}
+
+section {
+    display: none;
+}
+
+.active {
+    display: block;
+}
+
+#userCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#canvasContainer {
+    width: var(--main-canvas-width);
+    height: var(--main-canvas-height);
+    background-color: var(--main-canvas-bg);
+}
+
+#sectionCreationForm {
+    display: none;
+    position: fixed;
+}
+
+#sectionInfoContainer {
+    position: fixed;
+    width: 500px;
+    height: 300px;
+}
+
+#barcodeData {
+    display: none;
+}
+
+#loginForm {
+    width: var(--main-canvas-width);
+    height: var(--main-canvas-height);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+}
+
+#customContextMenu {
+    display: none;
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    z-index: 1000;
+}
