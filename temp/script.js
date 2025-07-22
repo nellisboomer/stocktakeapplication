@@ -1,14 +1,38 @@
 window.onload = function() {
   
+  // project constants
+  const LOCAL_PROJECTS_KEY = 'projects';
+  const SESSION_USER_KEY = 'user';
+  const SESSION_PROJECT_KEY = 'currentProjectId';
+
+  function getUser() {
+    return JSON.parse(sessionStorage.getItem(SESSION_USER_KEY));
+  }
+
+  function getProjects() {
+    return JSON.parse(localStorage.getItem(LOCAL_PROJECTS_KEY));
+  }
+
+  function saveProjects(projects) {
+    localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(projects));
+  }
+
+  function setCurrentProjectId(id) {
+    sessionStorage.setItem(SESSION_PROJECT_KEY, id);
+  }
+
+  // animation constants
   const animatedMarkerSizes = new Map(); // key: shapeID:index => currentsize
   const DEFAULT_MARKER_SIZE = 2;
   const ACTIVE_MARKER_SIZE = 4;
 
+  // canvas constants
   let canvas, ctx;
   let gridSize = [50, 25, 12.5];
   let zoomLevel = 0;
   let undoStack = []
 
+  // interaction modes
   const MODES = {
     IDLE: 'idle',
     DRAWING: 'drawing',
@@ -28,6 +52,19 @@ window.onload = function() {
   let shapes = [];
   let currentShape = createNewShape()
 
+  function createNewShape() {
+    return {
+      id: crypto.randomUUID(),
+      markers: [],
+      author: '',
+      location: '',
+      section: '',
+      isClosed: false,
+      isVerified: false, 
+    }
+  }
+
+  // displays current section
   function showPage(pageId) {
     const loginPage = document.getElementById('loginPage');
     const projectPage = document.getElementById('projectPage');
@@ -40,18 +77,6 @@ window.onload = function() {
       setTimeout(() => {
         initCanvas()
       }, 0);
-    }
-  }
-
-  function createNewShape() {
-    return {
-      id: crypto.randomUUID(),
-      markers: [],
-      author: '',
-      location: '',
-      section: '',
-      isClosed: false,
-      isVerified: false, 
     }
   }
 
@@ -73,21 +98,24 @@ window.onload = function() {
     showPage("projectPage")
   }
   
+  // navigates creation and joining of projects
   document.getElementById('createProjectBtn').onclick = () => {
-    const user = JSON.parse(sessionStorage.getItem('user'));
-    const project = {
+    const user = getUser()
+    const projectName = prompt("Project Name?");
+
+    const newProject = {
       id: crypto.randomUUID(),
-      name: prompt("Project Name?"),
+      name: projectName,
       createdBy: user.id,
       shapes: [],
       masterShape: null,
       users: [user.id],
     };
 
-    let projects = JSON.parse(localStorage.getItem('projects')) || [];
-    projects.push(project);
-    localStorage.setItem('projects', JSON.stringify(projects));
-    sessionStorage.setItem('currentProjectId', project.id);
+    const projects = getProjects();
+    projects.push(newProject);
+    saveProjects(projects);
+    setCurrentProjectId(newProject.id);
 
     showPage("canvasPage");
     setTimeout(() => {
@@ -95,21 +123,38 @@ window.onload = function() {
     }, 0);
   }
 
-  document.getElementById('joinProjectBtn').onclick = () => {
-    const projects = JSON.parse(localStorage.getItem('projects')) || [];
+  function renderProjectList() {
     const list = document.getElementById('projectList');
-    list.innerHTML = projects.map(p => `
-      <div>
-        <span>${p.name}</span>
-        <button onclick='joinProject("${p.id}")'>Join</button>
-      <div>
-    `).join('');
-  };
+    const projects = getProjects();
+    const user = getUser()
+
+    list.innerHTML = '';
+
+    projects.forEach(project => {
+      const item = document.createElement('div');
+      item.className = 'project-item'
+
+      item.innerHTML = `
+        <span>${project.name}</span>
+        <small>Created by: ${project.createdBy === user.id ? "You" : project.createdBy}</small>
+        <button>Join</button>
+      `;
+
+      const joinButton = item.querySelector('button');
+      joinButton.addEventListener("click", () => joinProject(project.id));
+
+      list.appendChild(item)
+    });
+  }
+
+  document.getElementById('joinProjectBtn').onclick = renderProjectList
 
   function joinProject(projectId) {
     const user = JSON.parse(sessionStorage.getItem('user'));
     let projects = JSON.parse(localStorage.getItem('projects'));
     let project = projects.find(p => p.id === projectId);
+
+    if (!project) return alert('Project not found');
 
     if (!project.users.includes(user.id)) {
       project.users.push(user.id);
@@ -118,6 +163,7 @@ window.onload = function() {
 
     sessionStorage.setItem('currentProjectId', projectId);
     
+    setCurrentProjectId(projectId)
     initCanvas()
     showPage("canvasPage")
   }
