@@ -106,7 +106,7 @@ window.onload = function() {
     const newProject = {
       id: crypto.randomUUID(),
       name: projectName,
-      createdBy: user.id,
+      createdBy: [user.id, user.name],
       shapes: [],
       masterShape: null,
       users: [user.id],
@@ -123,6 +123,30 @@ window.onload = function() {
     }, 0);
   }
 
+  function deleteProject(projectId) {
+    let projects = getProjects();
+    projects.filter(p => p.id !== projectId);
+    localStorage.setItem('projects', JSON.stringify(projects));
+  }
+
+  function viewProject(project) {
+    alert(`Project Name: ${project.name}\nCreated by: ${project.createdBy}\nUsers: ${project.users.length}`);
+    // needs to be populated
+  }
+
+  function confirmDeleteProject(project) {
+    if (isCreator) {
+      const password = prompt("Enter your password to delete this project:");
+      const storedPassword = user.password;
+      if (password === storedPassword) {
+        deleteProject(project.id);
+        renderProjectList();
+      } else {
+        alert("Incorrect password. Project not deleted")
+      }
+    };
+  }
+
   function renderProjectList() {
     const list = document.getElementById('projectList');
     const projects = getProjects();
@@ -132,22 +156,33 @@ window.onload = function() {
 
     projects.forEach(project => {
       const item = document.createElement('div');
-      item.className = 'project-item'
+      item.className = 'project-item';
+
+      const isCreator = project.createdBy === user.id;
 
       item.innerHTML = `
         <span>${project.name}</span>
         <small>Created by: ${project.createdBy === user.id ? "You" : project.createdBy}</small>
-        <button>Join</button>
+        <button class="join-btn">Join</button>
+        <button class="view-btn">View</button>
+        <button class="delete-btn">Delete</button>
       `;
 
-      const joinButton = item.querySelector('button');
+      const joinButton = item.querySelector('.join-btn');
       joinButton.addEventListener("click", () => joinProject(project.id));
+
+      const viewButton = item.querySelector('.view-btn');
+      viewButton.addEventListener("click", () => viewProject(project));
+
+      if (isCreator) {
+        item.querySelector('delete-btn').addEventListener("click", () => confirmDeleteProject(project))
+      }
 
       list.appendChild(item)
     });
   }
 
-  document.getElementById('joinProjectBtn').onclick = renderProjectList
+  document.getElementById('joinProjectBtn').onclick = () => renderProjectList();
 
   function joinProject(projectId) {
     const user = JSON.parse(sessionStorage.getItem('user'));
